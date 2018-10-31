@@ -13,7 +13,6 @@
   </pre>
 */
 
-#include "Arduino.h"
 #include "vm_config.h"
 #include <stddef.h>
 #include <string.h>
@@ -37,6 +36,7 @@
 static uint32_t free_vm_bitmap[MAX_VM_COUNT / 32 + 1];
 #define FREE_BITMAP_WIDTH 32
 #define Num(n) (sizeof(n)/sizeof((n)[0]))
+
 
 //================================================================
 /*! Number of leading zeros.
@@ -928,10 +928,16 @@ static inline int op_return( mrbc_vm *vm, uint32_t code, mrbc_value *regs )
   // return value
   int ra = GETARG_A(code);
 
-  mrbc_release(&regs[0]);
-  regs[0] = regs[ra];
+  mrbc_value *regs0 = regs;
+  // return value stored in original regs[0] if return in block
+  mrbc_callinfo *ci = vm->callinfo_tail;
+  if( ci && ci->current_regs[1].tt == MRBC_TT_PROC ){
+    regs0 = regs - 2;
+  } 
+  mrbc_release(regs0);
+  *regs0 = regs[ra];
   regs[ra].tt = MRBC_TT_EMPTY;
-
+    
   // nregs to release
   int nregs = vm->pc_irep->nregs;
 
